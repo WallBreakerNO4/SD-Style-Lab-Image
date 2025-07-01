@@ -1,5 +1,7 @@
 import requests
 import base64
+import asyncio
+import aiohttp
 from PIL import Image
 from io import BytesIO
 
@@ -7,13 +9,43 @@ from io import BytesIO
 class StableDiffusion:
     BASE_URL: str
 
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, concurrency_limit: int = 3):
         self.BASE_URL = base_url
+        self._concurrency_limit = concurrency_limit
+        self._semaphore = asyncio.Semaphore(concurrency_limit)
+
+    async def aio_generate_image(
+        self,
+        dic: dict,
+    ) -> list[Image.Image]:
+        """
+        Asynchronously generate images using the Stable Diffusion API with concurrency control.
+        """
+        async with self._semaphore:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.BASE_URL}/sdapi/v1/txt2img",
+                    json=dic,
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
+                    if "images" not in data or not data["images"]:
+                        raise ValueError("No images returned from the API")
+                    image_base64_data = data["images"]
+                    images = []
+                    for img_data in image_base64_data:
+                        image_data = base64.b64decode(img_data)
+                        image = Image.open(BytesIO(image_data))
+                        images.append(image)
+                    return images
 
     def generate_image(
         self,
         dic: dict,
     ) -> list[Image.Image]:
+        """
+        Generate images using the Stable Diffusion API.
+        """
 
         response = requests.post(
             f"{self.BASE_URL}/sdapi/v1/txt2img",
