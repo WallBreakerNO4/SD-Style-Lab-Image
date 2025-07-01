@@ -20,7 +20,7 @@ class StableDiffusion:
             json=dic,
         )
         response.raise_for_status()
-        print(response.json())
+        # print(response.json())
         data = response.json()
         if "images" not in data or not data["images"]:
             raise ValueError("No images returned from the API")
