@@ -14,7 +14,7 @@ class StableDiffusion:
         self._concurrency_limit = concurrency_limit
         self._semaphore = asyncio.Semaphore(concurrency_limit)
 
-    async def aio_generate_image(
+    async def aio_generate_images(
         self,
         dic: dict,
     ) -> list[Image.Image]:
@@ -39,7 +39,7 @@ class StableDiffusion:
                         images.append(image)
                     return images
 
-    def generate_image(
+    def generate_images(
         self,
         dic: dict,
     ) -> list[Image.Image]:
