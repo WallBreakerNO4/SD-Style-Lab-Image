@@ -6,6 +6,17 @@ from PIL import Image
 from io import BytesIO
 
 
+class GenerateImage:
+    image: Image.Image
+    parameters: dict
+    info: str
+
+    def __init__(self, image: Image.Image, parameters: dict, info: str):
+        self.image = image
+        self.parameters = parameters
+        self.info = info
+
+
 class StableDiffusion:
     BASE_URL: str
 
@@ -42,7 +53,7 @@ class StableDiffusion:
     def generate_images(
         self,
         dic: dict,
-    ) -> list[Image.Image]:
+    ) -> list[GenerateImage]:
         """
         Generate images using the Stable Diffusion API.
         """
@@ -61,5 +72,9 @@ class StableDiffusion:
         for img_data in image_base64_data:
             image_data = base64.b64decode(img_data)
             image = Image.open(BytesIO(image_data))
-            images.append(image)
+            images.append(GenerateImage(
+                image=image,
+                parameters=data.get("parameters", {}),
+                info=data.get("info", ""),
+            ))
         return images
