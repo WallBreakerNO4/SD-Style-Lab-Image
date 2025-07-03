@@ -28,7 +28,8 @@ class StableDiffusion:
     async def aio_generate_images(
         self,
         dic: dict,
-    ) -> list[GenerateImage]:
+        index: int,
+    ) -> tuple[list[GenerateImage], int]:
         """
         Asynchronously generate images using the Stable Diffusion API with concurrency control.
         """
@@ -47,12 +48,14 @@ class StableDiffusion:
                     for img_data in image_base64_data:
                         image_data = base64.b64decode(img_data)
                         image = Image.open(BytesIO(image_data))
-                        images.append(GenerateImage(
-                            image=image,
-                            parameters=data.get("parameters", {}),
-                            info=data.get("info", ""),
-                        ))
-                    return images
+                        images.append(
+                            GenerateImage(
+                                image=image,
+                                parameters=data.get("parameters", {}),
+                                info=data.get("info", ""),
+                            )
+                        )
+                    return images, index
 
     def generate_images(
         self,
@@ -76,9 +79,11 @@ class StableDiffusion:
         for img_data in image_base64_data:
             image_data = base64.b64decode(img_data)
             image = Image.open(BytesIO(image_data))
-            images.append(GenerateImage(
-                image=image,
-                parameters=data.get("parameters", {}),
-                info=data.get("info", ""),
-            ))
+            images.append(
+                GenerateImage(
+                    image=image,
+                    parameters=data.get("parameters", {}),
+                    info=data.get("info", ""),
+                )
+            )
         return images
