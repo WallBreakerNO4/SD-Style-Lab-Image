@@ -1,4 +1,5 @@
 import os
+import asyncio
 from dotenv import load_dotenv
 import boto3
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
@@ -101,7 +102,9 @@ def remove_dir_in_r2(path_prefix: str) -> None:
 
         for page in pages:
             if "Contents" in page:
-                objects_to_delete.extend([{"Key": obj["Key"]} for obj in page["Contents"]])
+                objects_to_delete.extend(
+                    [{"Key": obj["Key"]} for obj in page["Contents"]]
+                )
                 total_objects += len(page["Contents"])
 
         if not objects_to_delete:
@@ -116,10 +119,35 @@ def remove_dir_in_r2(path_prefix: str) -> None:
             chunk = objects_to_delete[i : i + chunk_size]
             s3_client.delete_objects(
                 Bucket=R2_BUCKET_NAME,
-                Delete={"Objects": chunk, "Quiet": True}, # Quiet=True 避免返回成功删除的对象列表
+                Delete={
+                    "Objects": chunk,
+                    "Quiet": True,
+                },  # Quiet=True 避免返回成功删除的对象列表
             )
 
         print(f"已删除 R2 中的路径前缀：{path_prefix}")
 
     except Exception as e:
         print(f"删除 R2 中的路径前缀时发生错误：{e}")
+
+
+async def aio_upload_file_to_r2(
+    semaphore: asyncio.Semaphore, file_path: str, index: int, path_prefix: str = ""
+) -> tuple[str | None, int]:
+    """
+    使用线程池将文件异步上传到 Cloudflare R2 存储桶，并受并发限制。
+
+    Args:
+        semaphore: 用于控制并发的 asyncio.Semaphore 对象。
+        file_path: 要上传的本地文件路径。
+        path_prefix: 在 R2 存储桶中的路径前缀（例如，"images/"）。
+
+    Returns:
+        上传文件的公共 URL，如果上传失败则返回 None。
+    """
+    async with semaphore:
+        # 在一个单独的线程中运行同步的 upload_file_to_r2 函数
+        # 使用 asyncio.to_thread (Python 3.9+)
+        public_url = await asyncio.to_thread(upload_file_to_r2, file_path, path_prefix)
+
+    return public_url, index
