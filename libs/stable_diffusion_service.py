@@ -20,7 +20,7 @@ class GenerateImage:
 class StableDiffusion:
     BASE_URL: str
 
-    def __init__(self, base_url: str, concurrency_limit: int = 3):
+    def __init__(self, base_url: str, concurrency_limit: int = 16):
         self.BASE_URL = base_url
         self._concurrency_limit = concurrency_limit
         self._semaphore = asyncio.Semaphore(concurrency_limit)
