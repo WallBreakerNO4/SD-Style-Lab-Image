@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 import boto3
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
+from tqdm import tqdm
 
 # 加载 .env 文件中的环境变量
 load_dotenv()
@@ -81,3 +82,44 @@ def upload_file_to_r2(file_path: str, path_prefix: str = "") -> str | None:
     except Exception as e:
         print(f"上传文件到 R2 时发生错误：{e}")
         return None
+
+
+def remove_dir_in_r2(path_prefix: str) -> None:
+    """
+    删除 R2 存储桶中的指定路径前缀。
+
+    Args:
+        path_prefix: 要删除的路径前缀（例如，"images/"）。
+    """
+    try:
+        # 使用分页器列出所有匹配前缀的对象
+        paginator = s3_client.get_paginator("list_objects_v2")
+        pages = paginator.paginate(Bucket=R2_BUCKET_NAME, Prefix=path_prefix)
+
+        objects_to_delete = []
+        total_objects = 0
+
+        for page in pages:
+            if "Contents" in page:
+                objects_to_delete.extend([{"Key": obj["Key"]} for obj in page["Contents"]])
+                total_objects += len(page["Contents"])
+
+        if not objects_to_delete:
+            print(f"没有找到匹配的对象：{path_prefix}")
+            return
+
+        print(f"找到 {total_objects} 个对象需要删除，路径前缀：{path_prefix}")
+
+        # 批量删除对象，每次最多 1000 个
+        chunk_size = 1000
+        for i in tqdm(range(0, len(objects_to_delete), chunk_size), desc="删除对象"):
+            chunk = objects_to_delete[i : i + chunk_size]
+            s3_client.delete_objects(
+                Bucket=R2_BUCKET_NAME,
+                Delete={"Objects": chunk, "Quiet": True}, # Quiet=True 避免返回成功删除的对象列表
+            )
+
+        print(f"已删除 R2 中的路径前缀：{path_prefix}")
+
+    except Exception as e:
+        print(f"删除 R2 中的路径前缀时发生错误：{e}")
