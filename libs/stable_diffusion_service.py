@@ -26,15 +26,15 @@ class StableDiffusion:
         self._semaphore = asyncio.Semaphore(concurrency_limit)
 
     async def aio_generate_images(
-        self,
-        dic: dict,
-        index: int,
+        self, dic: dict, index: int, timeout: int = 600
     ) -> tuple[list[GenerateImage], int]:
         """
         Asynchronously generate images using the Stable Diffusion API with concurrency control.
         """
         async with self._semaphore:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=timeout)
+            ) as session:
                 async with session.post(
                     f"{self.BASE_URL}/sdapi/v1/txt2img",
                     json=dic,
